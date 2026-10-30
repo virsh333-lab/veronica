@@ -17,7 +17,7 @@ def save_messages(thread_id:str, role:str, content:str):
     })
 
 def get_history(thread_id:str):
-    messages = chats_collection.find({"thread_id":thread_id})
+    messages = chats_collection.find({"thread_id":thread_id}).sort("_id", 1)
     history=[]
     for msg in messages:
         history.append({"role":msg['role'], "content":msg['content']})

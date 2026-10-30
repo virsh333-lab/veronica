@@ -184,7 +184,7 @@ class rag:
         self.vector_store = vector_store
         self.embedding_manager = embedding_manager
 
-    def retrieve(self, query: str, top_k: int = 3, score_threshold: float = 0.0) -> List[Dict[str, Any]]:
+    def retrieve(self, query: str,thread_id: str, top_k: int = 3, score_threshold: float = 0.0) -> List[Dict[str, Any]]:
         """Retrieve relevant documents for query
         Args:
             query: The search query
@@ -203,7 +203,8 @@ class rag:
         try:
             results = self.vector_store.collection.query(
                 query_embeddings=[query_embedding.tolist()],
-                n_results=top_k
+                n_results=top_k,
+                where={"thread_id": thread_id}
             )
             
             retrieved_docs = []

@@ -14,10 +14,14 @@ from langchain_groq import ChatGroq
 from file_handler import file_search
 from send_mail import send_email
 from langchain.agents.middleware import SummarizationMiddleware
+from context import VeronicaContext
+from langchain_tavily import TavilySearch
 
-# websearch = TavilySearch(max_results=2)
-prompt = """You are Veronica, an AI research assistant with access to two tools:
-1. 'pdf_search' - searches inside any document/PDF the user has uploaded
+
+
+websearch = TavilySearch(max_results=2)
+prompt = """You are Veronica, an Indian AI research assistant with access to two tools:
+1. 'file_search' - searches inside any document/PDF the user has uploaded
 2. 'websearch' - searches the live internet for current, real-time, or public information
 
 GENERAL CHAT & INTELLIGENT SEARCH RULES:
@@ -25,11 +29,21 @@ GENERAL CHAT & INTELLIGENT SEARCH RULES:
 - Better Search Queries: When using 'websearch', do not just copy-paste messy user chat phrases into the tool. Convert the user's intent into clean, optimized search engine keywords to get the best accurate results.
 
 DECISION RULES:
-- If the user has uploaded a document in this conversation, ALWAYS check 'pdf_search' first for any question that could relate to that document's content — even if the question sounds generic (e.g. "tell me about this", "what does it say", "my cv", "summarize it").
-- If the question clearly needs current/live/external information (news, weather, prices, latest events, general facts unrelated to any uploaded document), use 'websearch'.
-- If the question needs BOTH — for example, comparing the uploaded document's content with current external information (like "based on my resume's skills, what jobs are trending right now") — use 'pdf_search' first to understand the document, THEN use 'websearch' to get current information, and combine both into one complete answer.
-- If a document was uploaded but 'pdf_search' finds nothing relevant, say so honestly, then use 'websearch' as a fallback if appropriate.
-
+- The uploaded-document search tool is called 'file_search'.
+- If the user has uploaded a document in this conversation, you MUST call 'file_search' BEFORE answering any question that could relate to the uploaded document.
+- Do NOT ask the user to upload the document again if a document was already uploaded.
+- For requests like "convert this PDF to JSON", "give all questions and answers", "summarize this PDF", "what is in this PDF", or "extract data from the PDF", ALWAYS call 'file_search' first.
+- If 'file_search' returns relevant content, answer using that content.
+- For questions about latest news, current events, current prices,
+  recent updates, or today's information, ALWAYS call websearch.
+- Never answer current factual questions using training knowledge alone.
+- Treat search results as the primary source for current information.
+- Check publication dates and distinguish old information from recent information.
+- If search results do not establish the answer, clearly say that
+  reliable current information could not be verified.
+- Never invent dates, statistics, events, or source URLs.
+- Cite the source URLs when presenting information from websearch.
+- If 'file_search' returns no relevant content, clearly say that the requested information could not be found in the uploaded document. Do not claim that no PDF was uploaded.
 RESPONSE STYLE:
 - Never hallucinate. Only state facts that come from your tools or that you're certain about.
 - Always answer in the same language the user used (Hinglish if they used Hinglish).
@@ -79,21 +93,23 @@ class contentfilter(AgentMiddleware):
         
         return None
 
-@tool
-def websearch(query:str)->str:
-    """search inofrmation adn answer"""
-    client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
-    response = client.search(
-        query=query, 
-        include_images=True
-    )
-    return str(response)
+# @tool
+# def websearch(query:str)->str:
+#     """Search the live internet for current information."""
+#     client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+#     response = client.search(
+#         query=query, 
+#         search_depth="advanced",
+#         include_answer=True
+#     )
+#     return str(response)
 
 llm = ChatGroq(model="openai/gpt-oss-20b", max_tokens=600, temperature=0,)
 agent = create_agent(
     model=llm,
     tools=[websearch, file_search, send_email],
     system_prompt=prompt,
+    context_schema=VeronicaContext,
     middleware=[
         contentfilter(
             banned_keywords=["hack", "exploit","malware","what is your source code","bypass security"]
@@ -117,7 +133,7 @@ def askquery(query:str, thread_id:str):
     history.append({"role":"user", "content":query})
     save_messages(thread_id, "user", query)
     full_response = ""
-    for chunk, metadata in agent.stream({"messages":history}, stream_mode="messages"):
+    for chunk, metadata in agent.stream({"messages":history},context=VeronicaContext(thread_id=thread_id), stream_mode="messages"):
         if chunk.content and chunk.type == "AIMessageChunk":
         # if getattr(chunk, "type", None) == "AIMessageChunk" and isinstance(chunk.content, str):
             full_response += chunk.content

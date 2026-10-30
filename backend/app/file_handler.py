@@ -23,6 +23,9 @@ retriever = rag(vector_store, embedding_manager)
 #     }
 
 from rag import process_any, split, Embedding, Vectorstore, rag
+from dataclasses import dataclass
+from langchain.tools import ToolRuntime
+from context import VeronicaContext
 
 def upload_file(file_path: str = None, url: str = None, thread_id: str = None):
     documents = process_any(file_path=file_path, url=url)
@@ -35,24 +38,25 @@ def upload_file(file_path: str = None, url: str = None, thread_id: str = None):
     return {"status": "success", "chunks_added": len(chunks)}
 
 @tool
-def file_search(query: str) -> str:
-    """Search inside the uploaded PDF document for relevant information."""
+def file_search(query: str , runtime: ToolRuntime[VeronicaContext]) -> str:
+        """Search uploaded files belonging to the current conversation."""
+        thread_id = runtime.context.thread_id
 
-    results = retriever.retrieve(query, top_k=2)
+        results = retriever.retrieve(query,thread_id=thread_id, top_k=3)
 
-    print("RESULTS:", results)
+        print("RESULTS:", results)
 
-    if not results:
-        return "No relevant information found in the uploaded document."
+        if not results:
+            return "No relevant information found in the uploaded document."
 
-    combined = "\n\n".join(
-        [r["content"] for r in results]
-    )
+        combined = "\n\n".join(
+            [r["content"] for r in results]
+        )
 
-    print("PDF CONTEXT:")
-    print(combined)
+        print("PDF CONTEXT:")
+        print(combined)
 
-    return combined
+        return combined
 
 
 # if __name__ == "__main__":
