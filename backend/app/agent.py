@@ -15,11 +15,11 @@ from file_handler import file_search
 from send_mail import send_email
 from langchain.agents.middleware import SummarizationMiddleware
 from context import VeronicaContext
-from langchain_tavily import TavilySearch
+# from langchain_tavily import TavilySearch
 
 
 
-websearch = TavilySearch(max_results=2)
+# websearch = TavilySearch(max_results=2)
 prompt = """You are Veronica, an Indian AI research assistant with access to two tools:
 1. 'file_search' - searches inside any document/PDF the user has uploaded
 2. 'websearch' - searches the live internet for current, real-time, or public information
@@ -93,16 +93,16 @@ class contentfilter(AgentMiddleware):
         
         return None
 
-# @tool
-# def websearch(query:str)->str:
-#     """Search the live internet for current information."""
-#     client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
-#     response = client.search(
-#         query=query, 
-#         search_depth="advanced",
-#         include_answer=True
-#     )
-#     return str(response)
+@tool
+def websearch(query:str)->str:
+    """Search the live internet for current information."""
+    client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+    response = client.search(
+        query=query, 
+        search_depth="advanced",
+        include_answer=True
+    )
+    return str(response)
 
 llm = ChatGroq(model="openai/gpt-oss-20b", max_tokens=600, temperature=0,)
 agent = create_agent(
