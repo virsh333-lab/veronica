@@ -17,7 +17,7 @@ from typing import Any, List, Dict
 
 def processall(file_path):
     try:
-        loader = PyPDFLoader(file_path)
+        loader = PyMuPDFLoader(file_path)
         document = loader.load()
 
         for doc in document:
