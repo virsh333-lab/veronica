@@ -88,6 +88,7 @@ torch
 numpy
 pandas
 openpyxl
+pypdf
 pymupdf
 beautifulsoup4
 
